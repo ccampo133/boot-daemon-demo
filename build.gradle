@@ -1,0 +1,118 @@
+buildscript {
+    ext {
+        springBootVersion = "1.3.2.RELEASE"
+        osPackageVersion = "3.4.0"
+    }
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+        classpath("com.netflix.nebula:gradle-ospackage-plugin:${osPackageVersion}")
+    }
+}
+
+apply plugin: 'nebula.ospackage'
+apply plugin: "java"
+apply plugin: "eclipse"
+apply plugin: "spring-boot"
+apply plugin: "nebula.ospackage"
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+version = "0.0.1"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    compile("org.springframework.boot:spring-boot-starter-web")
+    testCompile("org.springframework.boot:spring-boot-starter-test")
+}
+
+jar {
+    baseName = "daemon-demo"
+    manifest {
+        attributes("Implementation-Title": "Daemon Demo", "Implementation-Version": "${project.version}")
+    }
+}
+
+eclipse {
+    classpath {
+        containers.remove("org.eclipse.jdt.launching.JRE_CONTAINER")
+        containers "org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"
+    }
+}
+
+task wrapper(type: Wrapper) {
+    gradleVersion = "2.9"
+}
+
+springBoot {
+    // Allows us to run the jar directly from the command line, e.g. ./daemon-demo-0.0.1.jar
+    executable = true
+    // Excludes the devtools package from production builds
+    excludeDevtools = true
+}
+
+// OS Package plugin configuration
+ospackage {
+    packageName = "daemon-demo"
+    version = "${project.version}"
+    release = 1
+    os = LINUX
+    type = BINARY
+    arch = NOARCH
+
+    preInstall file("scripts/rpm/preInstall.sh")
+    postInstall file("scripts/rpm/postInstall.sh")
+    preUninstall file("scripts/rpm/preUninstall.sh")
+    postUninstall file("scripts/rpm/postUninstall.sh")
+
+    into "/opt/local/daemon-demo"
+    user "daemon-demo"
+    permissionGroup "daemon-demo"
+
+    // Copy the actual .jar file
+    from(jar.outputs.files) {
+        // Strip the version from the jar filename
+        rename { String fileName ->
+            fileName.replace("-${project.version}", "")
+        }
+        fileMode 0500
+        into "bin"
+    }
+
+    // Copy the config files
+    from("install/unix/conf") {
+        fileType CONFIG | NOREPLACE
+        fileMode 0754
+        into "conf"
+    }
+}
+
+// Configure our RPM build task
+buildRpm {
+    user "daemon-demo"
+    permissionGroup "daemon-demo"
+
+    // Creates an empty log directory
+    directory("/opt/local/daemon-demo/log", 0755)
+
+    // Creates a symlink to the jar file as an init.d script (this functionality is provided by Spring Boot)
+    link("/etc/init.d/daemon-demo", "/opt/local/daemon-demo/bin/daemon-demo.jar")
+
+    // According to Spring Boot, the conf file needs to sit next to the jar, so we just create a symlink
+    link("/opt/local/daemon-demo/bin/daemon-demo.conf", "/opt/local/daemon-demo/conf/daemon-demo.conf")
+}
+
+// Same as the buildRpm task
+buildDeb {
+    user "daemon-demo"
+    permissionGroup "daemon-demo"
+    directory("/opt/local/daemon-demo/log", 0755)
+    link("/etc/init.d/daemon-demo", "/opt/local/daemon-demo/bin/daemon-demo.jar")
+    link("/opt/local/daemon-demo/bin/daemon-demo.conf", "/opt/local/daemon-demo/conf/daemon-demo.conf")
+}
