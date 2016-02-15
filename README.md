@@ -3,7 +3,7 @@
 A simple Spring Boot web app that returns "Hello world!" when you access its root endpoint. The real purpose of this app
 is to demonstrate how build it as an RPM/DEB package, and to install and run it as an `init.d` daemon. The
 `build.gradle` handles all of this heavy lifting, as well as some of the conventions of Spring Boot 1.3.2. Please see
-my [blog post](TODO) for more detailed information.
+my [blog post](https://www.ccampo.me/java/spring/spring-boot/unix/linux/2016/02/15/boot-service-package.html) for more detailed information.
 
 ## To build
 

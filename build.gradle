@@ -13,7 +13,7 @@ buildscript {
     }
 }
 
-apply plugin: 'nebula.ospackage'
+apply plugin: "nebula.ospackage"
 apply plugin: "java"
 apply plugin: "eclipse"
 apply plugin: "spring-boot"
